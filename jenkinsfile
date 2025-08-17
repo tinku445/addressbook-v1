@@ -5,16 +5,19 @@ pipeline {
         stage('compile') {
             steps {
                 echo 'compiling the source code'
+                sh 'mvn compile'
             }
          } 
          stage('Test') {
             steps {
                 echo 'Testing the code'
+                sh 'mvn test'
             }
          }
          stage('Package') {
             steps {
                 echo 'Running the tests'
+                sh 'mvn package'
             }
          }
     }
