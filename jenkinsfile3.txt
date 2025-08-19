@@ -14,12 +14,13 @@ pipeline {
                 echo 'Testing the code'
                 sh 'mvn test'
             }
-         }
-         post {
+            post {
             always {
                 junit 'target/surefire-reports/*.xml'
             }
          }
+         }
+         
          stage('Package') { //dev
          agent {label 'linux-slave'}
             steps {
