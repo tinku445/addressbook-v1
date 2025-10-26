@@ -1,0 +1,107 @@
+pipeline {
+    agent none
+    tools{
+    // jdk "mymaven"
+    }
+    
+    parameters{
+        string(name:'Env',defaultValue:'Test',description:'environment to deploy')
+        booleanParam(name:'executeTests',defaultValue: true,description:'decide to run tc')
+        choice(name:'APPVERSION',choices:['1.1','1.2','1.3'])
+
+    }
+    environment{
+        DEV_SERVER_IP='ec2-user@172.31.3.48'
+        DEPLOY_SERVER-IP=''
+        IMAGE_NAME='evopstrainer/java-mvn-privaterepos'
+    }
+
+    stages {
+        stage('Compile') { //slave1  ---/tmp/workspace
+            // agent {label 'linux-slave'}
+            steps {
+                script{
+                   echo "Compiling in ${params.Env}"
+                   sh "mvn compile"
+                }
+                
+            }
+            
+        }
+        
+         stage('UnitTest') { //slave1 --/tmp/workspace
+            when{
+                expression{
+                    params.executeTests == true
+                }
+            }
+            agent any
+            steps {
+                script{
+                    echo "UnitTest in junit"
+                    sh "mvn test"
+                }
+                
+            }
+            post{
+                always{
+                    junit 'target/surefire-reports/*.xml'
+                }
+            }
+            
+        }
+        stage('Package'+'push the image to registry') { //slave2 --/var/lib/jenkins/workspace
+        agent any
+            //input{
+            //    message "Select the platform for deployment"
+            //    ok "Platform Selected"
+            //    parameters{
+            //        choice(name:'Platform',choices:['EKS','EC2','On-prem'])
+            //    }
+            // }
+            steps {
+                script{
+                    sshagent(['slave2']) {
+                    withcredentials([usernamePassword(credentialsid:'docker-hub',passwordvariable:'PASSWORD',usernameVariable:'USERNAME')])                         
+                    {
+                    echo "packaging the code $ {params.APPVERSION}"
+                    sh "scp  -o StrictHostKeyChecking=no server-script.sh ${DEV_SERVER-IP}:/home/ec2-user"
+                    sh "ssh -o StrictHostKeyChecking=no ${DEV_SERVER-IP} 'bash ~/server-script.sh'${IMAGE_NAME} ${BUILD_NUMBER}"
+                    sh "ssh ${DEV_SERVER_IP} sudo docker login -u ${USERNAME} -p ${PASSWORD}"
+                    sh "ssh ${DEV_SERVER_IP} sudo docker push ${IMAGE_NAME}:${BUILD_NUMBER}"
+                      
+                }
+                
+            }
+            
+        }
+    }
+}
+ stage('DEPLOY') { //slave2 --/var/lib/jenkins/workspace
+     //   agent {label 'linux-slave'}
+     when {
+        expression{
+            BRANCH_NAME=='docker-1'
+        }
+     }            
+     agent any
+         input {
+            message "select the version to deploy"
+            ok "version selected"
+            parameters {
+                choice(name:'NEWAPP',choices:['1.2','2.1','3.1'])
+            }
+         }
+         steps {
+            script{
+                sshagent(['slave2']){
+                withcredentials([usernamePassword(credentialsid:'docker-hub',passwordvariable:'PASSWORD',usernameVariable:'USERNAME')])    
+                echo "package the code ${params.APPVERSION}"
+                sh "ssh ${DEPLOY_SERVER_IP} sudo systemctl start docker -y "
+                sh "ssh ${DEPLOY_SERVER_IP} sudo docker run -itd ${IMAGE_NAME}: ${BUILD_NUMBER}"
+                }
+            }
+         }
+ }     
+    }
+}
