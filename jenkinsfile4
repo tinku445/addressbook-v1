@@ -11,8 +11,8 @@ pipeline {
 
     }
     environment{
-        DEV_SERVER_IP='ec2-user@172.31.3.48'
-        DEPLOY_SERVER-IP=''
+        DEV_SERVER_IP='ec2-user@172-31-7-205'
+        DEPLOY_SERVER-IP='ec2-user@172-31-4-188'
         IMAGE_NAME='devopstrainer/java-mvn-privaterepos'
     }
 
