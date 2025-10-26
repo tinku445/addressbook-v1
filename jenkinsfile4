@@ -98,7 +98,8 @@ pipeline {
                 withcredentials([usernamePassword(credentialsid:'docker-hub',passwordvariable:'PASSWORD',usernameVariable:'USERNAME')])    
                 echo "package the code ${params.APPVERSION}"
                 sh "ssh ${DEPLOY_SERVER_IP} sudo systemctl start docker -y "
-                sh "ssh ${DEPLOY_SERVER_IP} sudo docker run -itd ${IMAGE_NAME}: ${BUILD_NUMBER}"
+                sh "ssh ${DEPLOY_SERVER_IP} sudo docker login -u ${USERNAME} -p ${PASSWORD}"
+                sh "ssh ${DEPLOY_SERVER_IP} sudo docker run -itd -p  ${IMAGE_NAME}: ${BUILD_NUMBER}"
                 }
             }
          }
